@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GOBLIN_OS // LIVE_VAT</title>
+    <style>
+        :root { --neon: #39ff14; --void: #000; }
+        body { background: var(--void); color: var(--neon); font-family: monospace; margin: 0; overflow: hidden; }
+        #canvas-wrap { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; background: #050505; }
+        canvas { border: 1px solid var(--neon); max-width: 95vw; max-height: 80vh; touch-action: none; }
+        
+        /* THE DASHBOARD */
+        #dash { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); border-top: 1px solid var(--neon); padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; z-index: 1000; font-size: 10px; }
+        .ctrl { display: flex; flex-direction: column; gap: 5px; }
+        input[type=range] { appearance: none; background: #222; height: 4px; outline: none; border: 1px solid var(--neon); }
+        input[type=range]::-webkit-slider-thumb { appearance: none; width: 15px; height: 15px; background: var(--neon); cursor: pointer; }
+        
+        .btn-group { grid-column: span 2; display: flex; gap: 10px; }
+        .btn { flex: 1; background: var(--neon); color: #000; border: none; padding: 10px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        #loader { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="dash">
+    <div class="ctrl">
+        <label>CHAOS: <span id="v-chaos">1.0</span></label>
+        <input type="range" id="s-chaos" min="0" max="5" step="0.1" value="1.0">
+    </div>
+    <div class="ctrl">
+        <label>DETAIL: <span id="v-detail">32</span></label>
+        <input type="range" id="s-detail" min="5" max="100" step="1" value="32">
+    </div>
+    <div class="ctrl">
+        <label>FRICTION: <span id="v-fric">0.99</span></label>
+        <input type="range" id="s-fric" min="0.9" max="1.01" step="0.005" value="0.99">
+    </div>
+    <div class="ctrl">
+        <label>JITTER: <span id="v-jit">2.0</span></label>
+        <input type="range" id="s-jit" min="0" max="10" step="0.5" value="2.0">
+    </div>
+    <div class="btn-group">
+        <button id="boot" class="btn">1. SENSORS</button>
+        <label for="loader" class="btn" style="text-align:center;">2. LOAD TARGET</label>
+        <input type="file" id="loader" accept="image/*">
+    </div>
+</div>
+
+<div id="canvas-wrap">
+    <canvas id="vort"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById('vort');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const loader = document.getElementById('loader');
+    
+    let state = {
+        img: null,
+        blocks: [],
+        chaos: 1.0,
+        detail: 32,
+        friction: 0.99,
+        jitter: 2.0,
+        gyro: { x: 0, y: 0 },
+        active: false
+    };
+
+    // --- SLIDER SYNC ---
+    const bind = (id, prop, displayId) => {
+        document.getElementById(id).oninput = (e) => {
+            state[prop] = parseFloat(e.target.value);
+            document.getElementById(displayId).innerText = e.target.value;
+            if(prop === 'detail' && state.img) processImage(); // Re-shred on detail change
+        };
+    };
+    bind('s-chaos', 'chaos', 'v-chaos');
+    bind('s-detail', 'detail', 'v-detail');
+    bind('s-fric', 'friction', 'v-fric');
+    bind('s-jit', 'jitter', 'v-jit');
+
+    // --- SENSORS ---
+    document.getElementById('boot').onclick = async () => {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            await DeviceOrientationEvent.requestPermission();
+        }
+        window.addEventListener('deviceorientation', (e) => {
+            state.gyro.x = e.gamma || 0; 
+            state.gyro.y = e.beta || 0;
+        });
+        document.getElementById('boot').innerText = "LIVE";
+    };
+
+    // --- THE TREMCELL LOGIC (JS PORT) ---
+    loader.onchange = (e) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            state.img = new Image();
+            state.img.onload = () => processImage();
+            state.img.src = ev.target.result;
+        };
+        reader.readAsDataURL(e.target.files[0]);
+    };
+
+    function processImage() {
+        const maxDim = 800;
+        let w = state.img.width;
+        let h = state.img.height;
+        if (w > maxDim) { h *= maxDim/w; w = maxDim; }
+        
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(state.img, 0, 0, w, h);
+        const data = ctx.getImageData(0, 0, w, h).data;
+        
+        state.blocks = [];
+        
+        function getStdDev(bx, by, bw, bh) {
+            let sum = 0, sumSq = 0, count = bw * bh;
+            for(let i=0; i<bw; i++) {
+                for(let j=0; j<bh; j++) {
+                    let idx = ((by+j)*w + (bx+i)) * 4;
+                    let avg = (data[idx] + data[idx+1] + data[idx+2]) / 3;
+                    sum += avg; sumSq += avg*avg;
+                }
+            }
+            let m = sum/count;
+            return Math.sqrt((sumSq/count) - m*m);
+        }
+
+        function split(x, y, sw, sh, depth) {
+            let dev = getStdDev(Math.floor(x), Math.floor(y), Math.floor(sw), Math.floor(sh));
+            if (dev < state.detail || depth >= 10 || sw <= 4) {
+                let idx = (Math.floor(y + sh/2)*w + Math.floor(x + sw/2)) * 4;
+                state.blocks.push({
+                    x, y, w: sw, h: sh,
+                    vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4,
+                    color: `rgb(${data[idx]},${data[idx+1]},${data[idx+2]})`
+                });
+                return;
+            }
+            let hw = sw/2, hh = sh/2;
+            split(x, y, hw, hh, depth+1);
+            split(x+hw, y, hw, hh, depth+1);
+            split(x, y+hh, hw, hh, depth+1);
+            split(x+hw, y+hh, hw, hh, depth+1);
+        }
+        
+        split(0, 0, w, h, 0);
+        state.active = true;
+    }
+
+    // --- KINETIC LOOP ---
+    function draw() {
+        ctx.fillStyle = "rgba(0,0,0,0.15)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (state.active) {
+            state.blocks.forEach(b => {
+                b.vx *= state.friction;
+                b.vy *= state.friction;
+                b.x += b.vx * state.chaos;
+                b.y += b.vy * state.chaos;
+
+                if (b.x < 0 || b.x + b.w > canvas.width) b.vx *= -1;
+                if (b.y < 0 || b.y + b.h > canvas.height) b.vy *= -1;
+
+                let tx = state.gyro.x * 0.5 * state.chaos;
+                let ty = state.gyro.y * 0.5 * state.chaos;
+                let jx = (Math.random() - 0.5) * state.jitter;
+                let jy = (Math.random() - 0.5) * state.jitter;
+
+                ctx.fillStyle = b.color;
+                ctx.fillRect(b.x + tx + jx, b.y + ty + jy, b.w - 0.5, b.h - 0.5);
+            });
+        }
+        requestAnimationFrame(draw);
+    }
+    draw();
+</script>
+</body>
+</html>
