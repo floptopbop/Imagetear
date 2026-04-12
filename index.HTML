@@ -3,47 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GOBLIN_OS // LIVE_VAT</title>
+    <title>GOBLIN_OS // VAT_V2</title>
     <style>
-        :root { --neon: #39ff14; --void: #000; }
-        body { background: var(--void); color: var(--neon); font-family: monospace; margin: 0; overflow: hidden; }
-        #canvas-wrap { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; background: #050505; }
-        canvas { border: 1px solid var(--neon); max-width: 95vw; max-height: 80vh; touch-action: none; }
+        :root { --neon: #39ff14; --void: #000; --ghost: rgba(57, 255, 20, 0.2); }
+        body { background: var(--void); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+        #canvas-wrap { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; background: #020202; }
+        canvas { border: 1px solid var(--neon); max-width: 98vw; max-height: 75vh; box-shadow: 0 0 20px var(--ghost); cursor: crosshair; }
         
-        /* THE DASHBOARD */
-        #dash { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); border-top: 1px solid var(--neon); padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; z-index: 1000; font-size: 10px; }
-        .ctrl { display: flex; flex-direction: column; gap: 5px; }
-        input[type=range] { appearance: none; background: #222; height: 4px; outline: none; border: 1px solid var(--neon); }
-        input[type=range]::-webkit-slider-thumb { appearance: none; width: 15px; height: 15px; background: var(--neon); cursor: pointer; }
+        #dash { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.95); border-top: 2px solid var(--neon); padding: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; z-index: 1000; }
+        .ctrl { display: flex; flex-direction: column; font-size: 9px; letter-spacing: 1px; }
+        input[type=range] { appearance: none; background: #111; height: 3px; border: 1px solid #333; margin: 5px 0; }
+        input[type=range]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; background: var(--neon); border-radius: 0; }
         
-        .btn-group { grid-column: span 2; display: flex; gap: 10px; }
-        .btn { flex: 1; background: var(--neon); color: #000; border: none; padding: 10px; font-weight: bold; cursor: pointer; font-size: 12px; }
-        #loader { display: none; }
+        .btn-group { grid-column: span 3; display: flex; gap: 5px; margin-top: 5px; }
+        .btn { flex: 1; background: #111; color: var(--neon); border: 1px solid var(--neon); padding: 8px; font-weight: bold; font-size: 10px; text-transform: uppercase; }
+        .btn:active { background: var(--neon); color: #000; }
+        #status { position: absolute; top: 10px; right: 10px; font-size: 9px; text-align: right; pointer-events: none; }
     </style>
 </head>
 <body>
 
+<div id="status">
+    SYS_REL_V2.0<br>
+    FRAGMENTS: <span id="f-count">0</span><br>
+    HUE_SHIFT: <span id="h-val">0</span>°
+</div>
+
 <div id="dash">
     <div class="ctrl">
-        <label>CHAOS: <span id="v-chaos">1.0</span></label>
-        <input type="range" id="s-chaos" min="0" max="5" step="0.1" value="1.0">
+        <label>CHAOS [<span id="v-chaos">1.0</span>]</label>
+        <input type="range" id="s-chaos" min="0" max="8" step="0.1" value="1.0">
     </div>
     <div class="ctrl">
-        <label>DETAIL: <span id="v-detail">32</span></label>
-        <input type="range" id="s-detail" min="5" max="100" step="1" value="32">
+        <label>SHRED [<span id="v-detail">32</span>]</label>
+        <input type="range" id="s-detail" min="8" max="80" step="2" value="32">
     </div>
     <div class="ctrl">
-        <label>FRICTION: <span id="v-fric">0.99</span></label>
-        <input type="range" id="s-fric" min="0.9" max="1.01" step="0.005" value="0.99">
+        <label>GHOSTS [<span id="v-alpha">0.15</span>]</label>
+        <input type="range" id="s-alpha" min="0.01" max="0.5" step="0.01" value="0.15">
     </div>
     <div class="ctrl">
-        <label>JITTER: <span id="v-jit">2.0</span></label>
-        <input type="range" id="s-jit" min="0" max="10" step="0.5" value="2.0">
+        <label>FRICTION</label>
+        <input type="range" id="s-fric" min="0.8" max="1.0" step="0.01" value="0.98">
+    </div>
+    <div class="ctrl">
+        <label>HUE ROTATE</label>
+        <input type="range" id="s-hue" min="0" max="360" step="1" value="0">
+    </div>
+    <div class="ctrl">
+        <label>JITTER</label>
+        <input type="range" id="s-jit" min="0" max="20" step="1" value="2">
     </div>
     <div class="btn-group">
-        <button id="boot" class="btn">1. SENSORS</button>
-        <label for="loader" class="btn" style="text-align:center;">2. LOAD TARGET</label>
-        <input type="file" id="loader" accept="image/*">
+        <button id="boot" class="btn">INITIALIZE CORE</button>
+        <button id="reset-btn" class="btn">RESET POSITIONS</button>
+        <label for="loader" class="btn" style="text-align:center; line-height:1.2;">CONSUME IMAGE</label>
+        <input type="file" id="loader" accept="image/*" style="display:none;">
     </div>
 </div>
 
@@ -61,26 +76,29 @@
         blocks: [],
         chaos: 1.0,
         detail: 32,
-        friction: 0.99,
+        friction: 0.98,
         jitter: 2.0,
+        alpha: 0.15,
+        hue: 0,
         gyro: { x: 0, y: 0 },
         active: false
     };
 
-    // --- SLIDER SYNC ---
     const bind = (id, prop, displayId) => {
         document.getElementById(id).oninput = (e) => {
             state[prop] = parseFloat(e.target.value);
-            document.getElementById(displayId).innerText = e.target.value;
-            if(prop === 'detail' && state.img) processImage(); // Re-shred on detail change
+            if(displayId) document.getElementById(displayId).innerText = e.target.value;
+            if(prop === 'detail' && state.img) processImage();
+            if(prop === 'chaos' && "vibrate" in navigator) navigator.vibrate(5);
         };
     };
     bind('s-chaos', 'chaos', 'v-chaos');
     bind('s-detail', 'detail', 'v-detail');
-    bind('s-fric', 'friction', 'v-fric');
-    bind('s-jit', 'jitter', 'v-jit');
+    bind('s-fric', 'friction');
+    bind('s-jit', 'jitter');
+    bind('s-alpha', 'alpha', 'v-alpha');
+    bind('s-hue', 'hue');
 
-    // --- SENSORS ---
     document.getElementById('boot').onclick = async () => {
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
             await DeviceOrientationEvent.requestPermission();
@@ -89,10 +107,14 @@
             state.gyro.x = e.gamma || 0; 
             state.gyro.y = e.beta || 0;
         });
-        document.getElementById('boot').innerText = "LIVE";
+        document.getElementById('boot').style.borderColor = "#fff";
+        document.getElementById('boot').innerText = "CORE_ONLINE";
     };
 
-    // --- THE TREMCELL LOGIC (JS PORT) ---
+    document.getElementById('reset-btn').onclick = () => {
+        state.blocks.forEach(b => { b.x = b.ox; b.y = b.oy; b.vx = 0; b.vy = 0; });
+    };
+
     loader.onchange = (e) => {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -104,10 +126,11 @@
     };
 
     function processImage() {
-        const maxDim = 800;
+        const maxDim = window.innerWidth > 800 ? 1000 : 800;
         let w = state.img.width;
         let h = state.img.height;
-        if (w > maxDim) { h *= maxDim/w; w = maxDim; }
+        const scale = Math.min(maxDim/w, maxDim/h);
+        w *= scale; h *= scale;
         
         canvas.width = w;
         canvas.height = h;
@@ -118,25 +141,24 @@
         
         function getStdDev(bx, by, bw, bh) {
             let sum = 0, sumSq = 0, count = bw * bh;
-            for(let i=0; i<bw; i++) {
-                for(let j=0; j<bh; j++) {
-                    let idx = ((by+j)*w + (bx+i)) * 4;
+            for(let i=0; i<bw; i+=2) { // Sample step for perf
+                for(let j=0; j<bh; j+=2) {
+                    let idx = (Math.floor(by+j)*Math.floor(w) + Math.floor(bx+i)) * 4;
                     let avg = (data[idx] + data[idx+1] + data[idx+2]) / 3;
                     sum += avg; sumSq += avg*avg;
                 }
             }
-            let m = sum/count;
-            return Math.sqrt((sumSq/count) - m*m);
+            return Math.sqrt((sumSq/(count/4)) - Math.pow(sum/(count/4), 2));
         }
 
         function split(x, y, sw, sh, depth) {
-            let dev = getStdDev(Math.floor(x), Math.floor(y), Math.floor(sw), Math.floor(sh));
-            if (dev < state.detail || depth >= 10 || sw <= 4) {
-                let idx = (Math.floor(y + sh/2)*w + Math.floor(x + sw/2)) * 4;
+            let dev = getStdDev(x, y, sw, sh);
+            if (dev < state.detail || depth >= 9 || sw <= 6) {
+                let idx = (Math.floor(y + sh/2)*Math.floor(w) + Math.floor(x + sw/2)) * 4;
                 state.blocks.push({
-                    x, y, w: sw, h: sh,
-                    vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4,
-                    color: `rgb(${data[idx]},${data[idx+1]},${data[idx+2]})`
+                    x, y, ox: x, oy: y, w: sw, h: sh,
+                    vx: 0, vy: 0,
+                    r: data[idx], g: data[idx+1], b: data[idx+2]
                 });
                 return;
             }
@@ -148,36 +170,55 @@
         }
         
         split(0, 0, w, h, 0);
+        document.getElementById('f-count').innerText = state.blocks.length;
         state.active = true;
     }
 
-    // --- KINETIC LOOP ---
     function draw() {
-        ctx.fillStyle = "rgba(0,0,0,0.15)";
+        // Ghosting / Trail effect
+        ctx.fillStyle = `rgba(0,0,0,${state.alpha})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (state.active) {
             state.blocks.forEach(b => {
+                // Gravity/Tilt Physics
+                b.vx += state.gyro.x * 0.01 * state.chaos;
+                b.vy += state.gyro.y * 0.01 * state.chaos;
+                
                 b.vx *= state.friction;
                 b.vy *= state.friction;
-                b.x += b.vx * state.chaos;
-                b.y += b.vy * state.chaos;
+                
+                b.x += b.vx;
+                b.y += b.vy;
 
-                if (b.x < 0 || b.x + b.w > canvas.width) b.vx *= -1;
-                if (b.y < 0 || b.y + b.h > canvas.height) b.vy *= -1;
+                // Loop edges instead of bounce for "vortex" feel
+                if (b.x < 0) b.x = canvas.width;
+                if (b.x > canvas.width) b.x = 0;
+                if (b.y < 0) b.y = canvas.height;
+                if (b.y > canvas.height) b.y = 0;
 
-                let tx = state.gyro.x * 0.5 * state.chaos;
-                let ty = state.gyro.y * 0.5 * state.chaos;
                 let jx = (Math.random() - 0.5) * state.jitter;
                 let jy = (Math.random() - 0.5) * state.jitter;
 
-                ctx.fillStyle = b.color;
-                ctx.fillRect(b.x + tx + jx, b.y + ty + jy, b.w - 0.5, b.h - 0.5);
+                // Color mutation
+                ctx.fillStyle = `rgb(${b.r},${b.g},${b.b})`;
+                if (state.hue !== 0) {
+                    ctx.filter = `hue-rotate(${state.hue}deg)`;
+                }
+                
+                ctx.fillRect(b.x + jx, b.y + jy, b.w - 0.5, b.h - 0.5);
             });
+            ctx.filter = 'none';
         }
         requestAnimationFrame(draw);
     }
     draw();
+
+    // Interaction Boost
+    canvas.ontouchmove = (e) => {
+        state.chaos = Math.min(state.chaos + 0.05, 8.0);
+        document.getElementById('v-chaos').innerText = state.chaos.toFixed(1);
+    };
 </script>
 </body>
 </html>
