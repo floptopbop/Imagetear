@@ -1,8 +1,8 @@
 {
-  "name": "GOBLIN_OS PORTABLE_VAT",
+  "name": "Quadtrippy",
   "short_name": "GOBLIN_OS",
   "description": "Glitch art engine with bouncing quadtree physics",
-  "start_url": "./index.html",
+  "start_url": "./Quadtrippy.html",
   "scope": "./",
   "display": "fullscreen",
   "orientation": "portrait-primary",
