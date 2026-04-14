@@ -213,8 +213,34 @@
             });
         }
         requestAnimationFrame(draw);
+        requestAnimationFrame(draw);
     }
-    draw();
+    
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault(); // Stops the screen from scrolling while you play
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    
+    // Calculate where your finger is on the canvas
+    const mx = (touch.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (touch.clientY - rect.top) * (canvas.height / rect.height);
+    
+    state.blocks.forEach(b => {
+        const dx = b.x - mx;
+        const dy = b.y - my;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        // If your finger is within 100 pixels, push the fragments away
+        if(dist < 100) {
+            const force = (100 - dist) / 100;
+            b.vx += (dx / dist) * force * 15; // Push strength
+            b.vy += (dy / dist) * force * 15;
+        }
+    });
+});
+
+			draw();
+    
 </script>
 </body>
 </html>
